@@ -1,0 +1,96 @@
+# Built-in file-type table for raw-jpg-import.
+#
+# Each category says which subfolder of the event folder its files go to.
+#   role = "primary"  -> a photo or video; copied into `folder`
+#   role = "sidecar"  -> follows the photo/video it belongs to (same folder, same name)
+#   role = "ignore"   -> camera system files; counted in the report, never copied
+# `rank` decides which primary a sidecar follows when several share its name (lowest wins).
+# Extensions are lowercase without the dot and match case-insensitively.
+
+schema = 1
+
+[categories.raw]
+folder = "RAW"
+role = "primary"
+rank = 0
+extensions = [
+    "nef", "nrw",                       # Nikon
+    "cr3", "cr2", "crw",                # Canon
+    "arw", "srf", "sr2",                # Sony
+    "raf",                              # Fujifilm
+    "orf", "ori",                       # Olympus / OM System
+    "rw2", "rwl", "raw",                # Panasonic, Leica
+    "pef", "ptx",                       # Pentax
+    "dng",                              # Adobe DNG (Leica, Pentax, Ricoh, phones)
+    "srw",                              # Samsung
+    "3fr", "fff",                       # Hasselblad
+    "iiq",                              # Phase One
+    "erf", "mef", "mos", "mrw",         # Epson, Mamiya, Leaf, Minolta
+    "x3f",                              # Sigma
+    "kdc", "dcr", "k25",                # Kodak
+    "gpr",                              # GoPro
+]
+
+# The Zf writes HEIF (.HIF) instead of JPEG in HLG tone mode. They go next to the JPGs.
+[categories.heif]
+folder = "JPG"
+role = "primary"
+rank = 1
+extensions = ["hif", "heif", "heic"]
+
+[categories.jpg]
+folder = "JPG"
+role = "primary"
+rank = 2
+extensions = ["jpg", "jpeg", "jpe"]
+
+[categories.video]
+folder = "MOV"
+role = "primary"
+rank = 3
+extensions = [
+    "mov", "mp4", "m4v",                # most cameras, Nikon Zf
+    "mts", "m2ts", "m2t",               # AVCHD
+    "avi", "mxf", "mpg",
+    "nev",                              # Nikon N-RAW video
+    "braw",                             # Blackmagic RAW
+    "crm",                              # Canon Cinema RAW Light
+    "r3d",                              # RED
+]
+
+[categories.sidecar]
+role = "sidecar"
+extensions = ["xmp", "wav", "srt", "xml"]
+
+[categories.ignore]
+role = "ignore"
+extensions = [
+    "thm", "lrv", "lrf", "ctg", "dat", "bin", "ndf", "dsc", "mrk",
+    "cpi", "mpl", "bdm", "ini", "db",
+    "fir", "log", "422",                # firmware, camera / Magic Lantern logs and dumps
+]
+
+[scan]
+# Directory names skipped anywhere (glob, case-insensitive).
+skip_dirs = [
+    "$RECYCLE.BIN", "System Volume Information", ".Trashes", ".Trash-*", ".Spotlight-V100",
+    ".fseventsd", ".TemporaryItems", ".DocumentRevisions-V100", "LOST.DIR", "FOUND.*",
+]
+# Paths relative to the card root (glob, case-insensitive, "/" separators, ** = any depth).
+skip_paths = [
+    "private/m4root/thmbnl/**", "private/m4root/sub/**",
+    "private/avchd/bdmv/clipinf/**", "private/avchd/bdmv/playlist/**", "misc/**",
+    "nikon/**",                         # Nikon settings and Picture Control files
+    "ml/**",                            # Magic Lantern (Canon) program files
+]
+# File names skipped anywhere (glob, case-insensitive).
+skip_files = [
+    "._*", ".*", "*.part", "thumbs.db", "desktop.ini", "nc_fllst.dat",
+    "indexervolumeguid", "wpsettings.dat",
+]
+
+[import]
+# Files with an extension not listed above: "report" lists them and leaves them on the card;
+# "copy" copies them into the `other_folder` subfolder.
+unknown = "report"
+other_folder = "OTHER"

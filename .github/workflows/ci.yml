@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]          # tags are built by release.yml
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # setup-python's tkinter links against the system Tk; xvfb gives the GUI tests a display.
+      - name: Install Tk and a virtual display (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y python3-tk libtk8.6 xvfb
+
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Tests
+        if: runner.os != 'Linux'
+        run: python -m pytest --cov
+
+      - name: Tests (virtual display)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python -m pytest --cov
+
+      - name: GUI smoke tests
+        if: runner.os != 'Linux'
+        run: python -m pytest -m gui
+
+      - name: GUI smoke tests (virtual display)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python -m pytest -m gui

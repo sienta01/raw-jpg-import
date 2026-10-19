@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Raw/JPG Import
+GenericName=Photo Importer
+Comment=Import photos and videos from camera cards into dated event folders
+# Put RawJpgImport somewhere on your PATH (for example ~/.local/bin) and this file in
+# ~/.local/share/applications, or replace Exec with the full path to RawJpgImport.
+Exec=RawJpgImport
+Icon=raw-jpg-import
+Terminal=false
+Categories=Graphics;Photography;
+Keywords=photo;import;camera;card;raw;nef;jpg;
+StartupNotify=false

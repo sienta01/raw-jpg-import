@@ -1,0 +1,68 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "raw-jpg-import"
+dynamic = ["version"]
+description = "Import photos and videos from camera cards into dated event folders split into RAW / JPG / MOV."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dependencies = []
+keywords = ["photography", "import", "raw", "nef", "sd-card", "nikon", "dual-slot"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Environment :: X11 Applications",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: MacOS X",
+    "Environment :: Console",
+    "Topic :: Multimedia :: Graphics",
+]
+
+[project.optional-dependencies]
+# exifread is a test oracle only: it checks that the fake EXIF writers follow the spec.
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.6", "exifread>=3", "pillow>=10"]
+# The built-in photo viewer needs Pillow to show previews; everything else is stdlib only.
+viewer = ["pillow>=10"]
+build = ["pyinstaller>=6.10,<7", "pillow>=10"]
+
+[project.scripts]
+raw-jpg-import = "raw_jpg_import.cli:main"
+
+[project.gui-scripts]
+raw-jpg-import-gui = "raw_jpg_import.gui.app:main"
+
+[tool.hatch.version]
+path = "src/raw_jpg_import/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/raw_jpg_import"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["tests/real/data"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests", "src"]
+addopts = "-ra --strict-markers -m 'not gui and not real'"
+markers = [
+    "gui: needs a display (Tk)",
+    "real: needs real camera sample files in tests/real/data or RJI_SAMPLES_DIR",
+    "slow: slower tests (large files)",
+]
+
+[tool.coverage.run]
+source = ["raw_jpg_import"]
+omit = ["*/gui/app.py", "*/gui/*_page.py", "*/gui/dialogs.py", "*/gui/widgets.py"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["packaging/*.spec"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+ignore = ["SIM105", "SIM108"]

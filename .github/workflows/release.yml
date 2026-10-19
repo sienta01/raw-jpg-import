@@ -1,0 +1,130 @@
+name: Release
+
+# A tag v<version> (equal to raw_jpg_import.__version__) builds the standalone apps, the sdist
+# and the wheel, and creates a DRAFT GitHub release to review and publish by hand.
+# Run it manually (workflow_dispatch) to build the apps without releasing.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    name: App ${{ matrix.tag }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            tag: windows-x64
+          - os: macos-15
+            tag: macos-arm64
+          # GitHub's Intel macOS image (macos-13 is retired). Drop this row when it goes too.
+          - os: macos-15-intel
+            tag: macos-x64
+          # The oldest supported glibc, so the binary runs on as many distros as possible.
+          - os: ubuntu-22.04
+            tag: linux-x64
+    steps:
+      - uses: actions/checkout@v7
+
+      # The python.org-style builds from setup-python bundle Tk 8.6; never use Homebrew's or
+      # Apple's system Python (Tk 8.5) for the macOS app.
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install Tk and a virtual display (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y python3-tk libtk8.6 xvfb
+
+      - name: Install
+        run: python -m pip install -e ".[dev,build]"
+
+      - name: Check the tag matches __version__
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          version="$(python -c 'import raw_jpg_import as m; print(m.__version__)')"
+          if [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match __version__ $version"
+            exit 1
+          fi
+
+      - name: Tests (without GUI)
+        run: python -m pytest -q -m "not gui and not real"
+
+      - name: Build, smoke-test and archive
+        run: python packaging/build.py --smoke --platform-tag ${{ matrix.tag }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: app-${{ matrix.tag }}
+          path: dist/release/*
+          if-no-files-found: error
+
+  python-dist:
+    name: sdist and wheel
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Build
+        run: |
+          python -m pip install build
+          python -m build
+
+      - name: Check the wheel installs and finds its data
+        run: |
+          python -m venv /tmp/wheel-check
+          /tmp/wheel-check/bin/python -m pip install dist/*.whl
+          /tmp/wheel-check/bin/raw-jpg-import --version
+          RAW_JPG_IMPORT_HOME=/tmp/wheel-check-home /tmp/wheel-check/bin/raw-jpg-import config show
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-dist
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Draft GitHub release
+    needs: [app, python-dist]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: out
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: out
+        run: |
+          sha256sum -- *.zip *.tar.gz *.whl > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME"
+          out/*.zip out/*.tar.gz out/*.whl out/SHA256SUMS.txt
+          --draft --generate-notes --title "$GITHUB_REF_NAME"
+          --repo "$GITHUB_REPOSITORY"

@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Build output (PyInstaller, hatch)
+build/
+dist/
+/*.spec
+
+# Real camera samples are never committed
+tests/real/data/
+
+# OS junk
+.DS_Store
+._*
+Thumbs.db
+desktop.ini
